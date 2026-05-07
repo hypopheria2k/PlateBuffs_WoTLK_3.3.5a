@@ -113,20 +113,6 @@ This pattern is applied across **all** module files: `core.lua`, `frames.lua`, `
 
 ---
 
-## 💻 Hardware & OS Compatibility
-
-**Tested and verified on:**
-
-| Platform | Status |
-|----------|--------|
-| 🪟 **Windows 10 / 11** | ✅ High-end stability (tested on Ryzen 7 + RTX 4070, AMD Vega integrated) |
-| 🐧 **Linux (Wine / Proton)** | ✅ Verified on Fedora 40 + Wine 9.x — no CPU spikes, smooth 60fps in 40v40 |
-| 🍏 **macOS (CrossOver)** | ✅ Working with CrossOver 24+ — same GC improvements benefit Rosetta translation overhead |
-
-The table pooling is particularly beneficial on **Linux/Wine** where WoW's Lua GC triggers more expensive memory management calls under the DXVK/VKD3D translation layer.
-
----
-
 ## 📦 Installation
 
 ```
@@ -143,7 +129,7 @@ The table pooling is particularly beneficial on **Linux/Wine** where WoW's Lua G
         └── media/
 ```
 
-1. Download the latest [release](https://github.com/hypopheria2k/PlateBuffs_WoTLK_3.3.5a/releases).
+1. Download the latest [version](https://github.com/hypopheria2k/PlateBuffs_WoTLK_3.3.5a).
 2. Extract `PlateBuffs/` into your `Interface/AddOns/` directory.
 3. Launch WoW and verify the addon is enabled in the character selection screen (`Escape` → `AddOns`).
 4. Configure via `/pb` in-game chat command.
