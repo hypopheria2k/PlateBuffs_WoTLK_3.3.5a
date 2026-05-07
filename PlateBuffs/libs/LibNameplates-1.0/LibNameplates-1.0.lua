@@ -39,9 +39,10 @@ local UnitIsUnit = UnitIsUnit
 local UnitHealth = UnitHealth
 local UnitHealthMax = UnitHealthMax
 local _
+local GetTime = GetTime
 
-local fastOnFinishThrottle = 0.25 -- check combat & threat every x seconds.
-local slowOnFinishThrottle = 1 -- Check for lingering mouseover texture and for TidyPlates frame.
+local fastOnFinishThrottle = 0.3 -- check combat & threat every x seconds.
+local slowOnFinishThrottle = 1.5 -- Check for lingering mouseover texture and for TidyPlates frame.
 local CheckForFakePlate -- checks fake frames
 
 local regionOrder = {
@@ -216,27 +217,30 @@ local function IsNamePlateFrame(frame)
 	return true
 end
 
-local ScanWorldFrameChildren
-function ScanWorldFrameChildren(frame, ...)
-	if not frame then return end
-	if frame:IsShown() and not lib.nameplates[frame] and IsNamePlateFrame(frame) then
-		lib:NameplateFirstLoad(frame)
+local function ScanWorldFrameChildren(...)
+	local n = select("#", ...)
+	for i = 1, n do
+		local frame = select(i, ...)
+		if frame:IsShown() and not lib.nameplates[frame] and IsNamePlateFrame(frame) then
+			lib:NameplateFirstLoad(frame)
+		end
 	end
-	return ScanWorldFrameChildren(...)
 end
 
 do
 	local WorldFrame = WorldFrame
+	local WorldFrameGetChildren = WorldFrame.GetChildren
+	local WorldFrameGetNumChildren = WorldFrame.GetNumChildren
 	local prevChildren, curChildren = 0, nil
 	local lastUpdated = 0
 	local function onUpdate(this, elapsed)
 		lastUpdated = lastUpdated + elapsed
-		if lastUpdated > 0.01 then
+		if lastUpdated > 0.15 then
 			lastUpdated = 0
-			curChildren = WorldFrame:GetNumChildren()
+			curChildren = WorldFrameGetNumChildren(WorldFrame)
 			if curChildren ~= prevChildren then
 				prevChildren = curChildren
-				ScanWorldFrameChildren(WorldFrame:GetChildren())
+				ScanWorldFrameChildren(WorldFrameGetChildren(WorldFrame))
 			end
 		end
 	end

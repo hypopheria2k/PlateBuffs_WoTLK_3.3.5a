@@ -172,6 +172,35 @@ core.iconTestMode = false
 
 local table_getn = table.getn
 
+-- Table pool for reducing GC pressure
+local tablePool = {}
+
+local function acquireTable()
+	local t = next(tablePool)
+	if t then
+		tablePool[t] = nil
+		return t
+	end
+	return {}
+end
+
+local function releaseTable(t)
+	for k in pairs(t) do
+		t[k] = nil
+	end
+	tablePool[t] = true
+end
+
+local function wipe(t)
+	for k in pairs(t) do
+		t[k] = nil
+	end
+end
+
+core.acquireTable = acquireTable
+core.releaseTable = releaseTable
+core.wipe = wipe
+
 local totems = {}
 do
 	local name, texture, _
@@ -502,6 +531,8 @@ do
 		local GUID = UnitGUID(unitID)
 		if not GUID then return end
 
+		local now = GetTime()
+
 		local unitName = UnitName(unitID)
 		if unitName and P.saveNameToGUID == true and UnitIsPlayer(unitID) or UnitClassification(unitID) == "worldboss" then
 			nametoGUIDs[unitName] = GUID
@@ -511,9 +542,7 @@ do
 			guidBuffs[GUID] = guidBuffs[GUID] or {}
 
 			--Remove all the entries.
-			for i = table_getn(guidBuffs[GUID]), 1, -1 do
-				table_remove(guidBuffs[GUID], i)
-			end
+			wipe(guidBuffs[GUID])
 
 			local i = 1
 			local name, icon, count, duration, expirationTime, unitCaster, spellId, debuffType
@@ -530,17 +559,17 @@ do
 						(spellOpts.show == 4 and not UnitCanAttack("player", unitID)) or
 						(spellOpts.show == 5 and UnitCanAttack("player", unitID))
 					then
-						table_insert(guidBuffs[GUID], {
-							name = name,
-							icon = icon,
-							expirationTime = expirationTime,
-							startTime = expirationTime - duration,
-							duration = duration,
-							playerCast = (unitCaster == "player") and 1,
-							stackCount = count,
-							sID = spellId,
-							caster = unitCaster and core:GetFullName(unitCaster)
-						})
+						local t = acquireTable()
+						t.name = name
+						t.icon = icon
+						t.expirationTime = expirationTime
+						t.startTime = expirationTime - duration
+						t.duration = duration
+						t.playerCast = (unitCaster == "player") and 1
+						t.stackCount = count
+						t.sID = spellId
+						t.caster = unitCaster and core:GetFullName(unitCaster)
+						table_insert(guidBuffs[GUID], t)
 					end
 				elseif duration > 0 then
 					if
@@ -548,17 +577,17 @@ do
 						(P.defaultBuffShow == 2 and unitCaster == "player") or
 						(P.defaultBuffShow == 4 and unitCaster == "player")
 					then
-						table_insert(guidBuffs[GUID], {
-							name = name,
-							icon = icon,
-							expirationTime = expirationTime,
-							startTime = expirationTime - duration,
-							duration = duration,
-							playerCast = (unitCaster == "player") and 1,
-							stackCount = count,
-							sID = spellId,
-							caster = unitCaster and core:GetFullName(unitCaster)
-						})
+						local t = acquireTable()
+						t.name = name
+						t.icon = icon
+						t.expirationTime = expirationTime
+						t.startTime = expirationTime - duration
+						t.duration = duration
+						t.playerCast = (unitCaster == "player") and 1
+						t.stackCount = count
+						t.sID = spellId
+						t.caster = unitCaster and core:GetFullName(unitCaster)
+						table_insert(guidBuffs[GUID], t)
 					end
 				end
 
@@ -578,19 +607,19 @@ do
 						(spellOpts.show == 4 and not UnitCanAttack("player", unitID)) or
 						(spellOpts.show == 5 and UnitCanAttack("player", unitID))
 					then
-						table_insert(guidBuffs[GUID], {
-							name = name,
-							icon = icon,
-							expirationTime = expirationTime,
-							startTime = expirationTime - duration,
-							duration = duration,
-							playerCast = (unitCaster == "player") and 1,
-							stackCount = count,
-							debuffType = debuffType,
-							isDebuff = true,
-							sID = spellId,
-							caster = unitCaster and core:GetFullName(unitCaster)
-						})
+						local t = acquireTable()
+						t.name = name
+						t.icon = icon
+						t.expirationTime = expirationTime
+						t.startTime = expirationTime - duration
+						t.duration = duration
+						t.playerCast = (unitCaster == "player") and 1
+						t.stackCount = count
+						t.debuffType = debuffType
+						t.isDebuff = true
+						t.sID = spellId
+						t.caster = unitCaster and core:GetFullName(unitCaster)
+						table_insert(guidBuffs[GUID], t)
 					end
 				elseif duration > 0 then
 					if
@@ -598,19 +627,19 @@ do
 						(P.defaultDebuffShow == 2 and unitCaster == "player") or
 						(P.defaultDebuffShow == 4 and unitCaster == "player")
 					then
-						table_insert(guidBuffs[GUID], {
-							name = name,
-							icon = icon,
-							expirationTime = expirationTime,
-							startTime = expirationTime - duration,
-							duration = duration,
-							playerCast = (unitCaster == "player") and 1,
-							stackCount = count,
-							debuffType = debuffType,
-							isDebuff = true,
-							sID = spellId,
-							caster = unitCaster and core:GetFullName(unitCaster)
-						})
+						local t = acquireTable()
+						t.name = name
+						t.icon = icon
+						t.expirationTime = expirationTime
+						t.startTime = expirationTime - duration
+						t.duration = duration
+						t.playerCast = (unitCaster == "player") and 1
+						t.stackCount = count
+						t.debuffType = debuffType
+						t.isDebuff = true
+						t.sID = spellId
+						t.caster = unitCaster and core:GetFullName(unitCaster)
+						table_insert(guidBuffs[GUID], t)
 					end
 				end
 				i = i + 1

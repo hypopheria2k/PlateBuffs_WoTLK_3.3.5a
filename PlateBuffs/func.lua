@@ -53,14 +53,14 @@ function core:RedToGreen(current, max)
     if max == 0 then
         max = 1
     end
-    local percentage = (current / max) * 100
-    local red, green = 0, 0
-    if percentage >= 50 then
+    local ratio = current / max
+    local red, green
+    if ratio >= 0.5 then
         green = 1
-        red = ((100 - percentage) / 100) * 2
+        red = 2 * (1 - ratio)
     else
         red = 1
-        green = ((100 - (100 - percentage)) / 100) * 2
+        green = 2 * ratio
     end
     return red, green, 0
 end
@@ -74,77 +74,65 @@ do
 	    minute = 60
 	}
 
-    -- Returns the number of hours in a readable string format.
-    -- maxLenth 1="1h", 2="1h, 33m", 3="1h, 33m, 21s", ect
-	function core:SecondsToString(seconds, maxLenth)
-	    local msg = ""
-	    maxLenth = maxLenth or 2
-	    if seconds == 0 then
-	        msg = "0s "
-	    else
-	        local sYear, sMonth, sDay, sHour, sMinute = 0, 0, 0, 0, 0
+		-- Returns the number of hours in a readable string format.
+	    -- maxLenth 1="1h", 2="1h, 33m", 3="1h, 33m, 21s", ect
+		function core:SecondsToString(seconds, maxLenth)
+		    local msg = ""
+		    maxLenth = maxLenth or 2
+		    if seconds == 0 then
+		        msg = "0s "
+		    else
+		        local sYear = math_floor(seconds / chunks.year)
+		        seconds = seconds % chunks.year
 
-	        while seconds > (chunks.year - 1) do
-	            sYear = sYear + 1
-	            seconds = seconds - chunks.year
-	        end
+		        local sMonth = math_floor(seconds / chunks.month)
+		        seconds = seconds % chunks.month
 
-	        while seconds > (chunks.month - 1) do
-	            sMonth = sMonth + 1
-	            seconds = seconds - chunks.month
-	        end
+		        local sDay = math_floor(seconds / chunks.day)
+		        seconds = seconds % chunks.day
 
-	        while seconds > (chunks.day - 1) do
-	            sDay = sDay + 1
-	            seconds = seconds - chunks.day
-	        end
+		        local sHour = math_floor(seconds / chunks.hour)
+		        seconds = seconds % chunks.hour
 
-	        while seconds > (chunks.hour - 1) do
-	            sHour = sHour + 1
-	            seconds = seconds - chunks.hour
-	        end
+		        local sMinute = math_floor(seconds / chunks.minute)
+		        seconds = seconds % chunks.minute
 
-	        while seconds > (chunks.minute - 1) do
-	            sMinute = sMinute + 1
-	            seconds = seconds - chunks.minute
-	        end
+		        local sLenth = 0
+		        if sYear > 0 and sLenth < maxLenth then
+		            sLenth = sLenth + 1
+		            msg = sYear .. "y "
+		        end
 
-	        local sLenth = 0
-	        if sYear > 0 and sLenth < maxLenth then
-	            sLenth = sLenth + 1
-	            msg = sYear .. "y "
-	        end
+		        if sMonth > 0 and sLenth < maxLenth then
+		            sLenth = sLenth + 1
+		            msg = msg .. sMonth .. "mo "
+		        end
 
-	        if sMonth > 0 and sLenth < maxLenth then
-	            sLenth = sLenth + 1
-	            msg = msg .. sMonth .. "mo "
-	        end
+		        if sDay > 0 and sLenth < maxLenth then
+		            sLenth = sLenth + 1
+		            msg = msg .. sDay .. "d "
+		        end
 
-	        if sDay > 0 and sLenth < maxLenth then
-	            sLenth = sLenth + 1
-	            msg = msg .. sDay .. "d "
-	        end
+		        if sHour > 0 and sLenth < maxLenth then
+		            sLenth = sLenth + 1
+		            msg = msg .. sHour .. "h "
+		        end
 
-	        if sHour > 0 and sLenth < maxLenth then
-	            sLenth = sLenth + 1
-	            msg = msg .. sHour .. "h "
-	        end
+		        if sMinute > 0 and sLenth < maxLenth then
+		            sLenth = sLenth + 1
+		            msg = msg .. sMinute .. "m "
+		        end
 
-	        if sMinute > 0 and sLenth < maxLenth then
-	            sLenth = sLenth + 1
-	            msg = msg .. sMinute .. "m "
-	        end
+		        if seconds > 0 and sLenth < maxLenth then
+		            sLenth = sLenth + 1
+		            msg = msg .. seconds .. " "
+		        end
+		    end
 
-	        if seconds > 0 and sLenth < maxLenth then
-	            sLenth = sLenth + 1
-	            msg = msg .. seconds .. " "
-	        end
-	    end
+		    msg = string_sub(msg, 1, string_len(msg) - 1)
 
-	    msg = string_sub(msg, 1, string_len(msg) - 1)
-
-	    return msg
-	end
+		    return msg
+		end
 end
 
 -- Returns a unit's name with server if server isn't our own.

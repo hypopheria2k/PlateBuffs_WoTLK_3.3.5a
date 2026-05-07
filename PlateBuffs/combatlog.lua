@@ -13,6 +13,25 @@ local table_insert = table.insert
 local table_remove = table.remove
 
 local GetSpellInfo = GetSpellInfo
+local UnitGUID = UnitGUID
+local wipe = core.wipe
+local acquireTable = core.acquireTable
+
+local COMBATLOG_OBJECT_TYPE_PLAYER = COMBATLOG_OBJECT_TYPE_PLAYER or 0x00000400
+local COMBATLOG_OBJECT_REACTION_FRIENDLY = COMBATLOG_OBJECT_REACTION_FRIENDLY or 0x00000010
+local COMBATLOG_OBJECT_REACTION_HOSTILE = COMBATLOG_OBJECT_REACTION_HOSTILE or 0x00000040
+
+local iconCache = {}
+local function GetCleanIcon(texture)
+	if not texture then return "" end
+	local cached = iconCache[texture]
+	if cached then
+		return cached
+	end
+	local cleaned = texture:upper():gsub("INTERFACE\\ICONS\\", "")
+	iconCache[texture] = cleaned
+	return cleaned
+end
 
 local LibAI = LibStub("LibAuraInfo-1.0", true)
 if not LibAI then
@@ -57,25 +76,16 @@ do
 	end
 end
 
-do
-	local COMBATLOG_OBJECT_TYPE_PLAYER = COMBATLOG_OBJECT_TYPE_PLAYER or 0x00000400
-	function core:FlagIsPlayer(flags)
-		return (bit_band(flags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0)
-	end
+function core:FlagIsPlayer(flags)
+	return (bit_band(flags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0)
 end
 
-do
-	local COMBATLOG_OBJECT_REACTION_FRIENDLY = COMBATLOG_OBJECT_REACTION_FRIENDLY or 0x00000010
-	function core:FlagIsFriendly(flags)
-		return (bit_band(flags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0)
-	end
+function core:FlagIsFriendly(flags)
+	return (bit_band(flags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0)
 end
 
-do
-	local COMBATLOG_OBJECT_REACTION_HOSTILE = COMBATLOG_OBJECT_REACTION_HOSTILE or 0x00000040
-	function core:FlagIsHostle(flags)
-		return (bit_band(flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0)
-	end
+function core:FlagIsHostle(flags)
+	return (bit_band(flags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0)
 end
 
 function core:ForceNameplateUpdate(dstGUID)
@@ -98,28 +108,32 @@ function core:AddSpellToGUID(dstGUID, spellID, srcName, spellName, spellTexture,
 		self:RemoveOldSpells(dstGUID)
 	end
 
-	local dstName, dstFlags = LibAI:GetGUIDInfo(dstGUID)
 	local getTime = GetTime()
 	local count = #guidBuffs[dstGUID]
+
+	local playerCast = srcGUID == playerGUID and 1
+	local expTime = expires or 0 - 0.1
+	local durationVal = duration or 0
+	local stackVal = stackCount or 0
+
 	if count == 0 then
-		i = 0
-		table_insert(guidBuffs[dstGUID], i + 1, {
-			name = spellName,
-			icon = spellTexture,
-			duration = (duration or 0),
-			playerCast = srcGUID == playerGUID and 1,
-			stackCount = stackCount or 0,
-			startTime = getTime,
-			expirationTime = expires or 0 - 0.1,
-			sID = spellID,
-			caster = srcName
-		})
+		local t = acquireTable()
+		t.name = spellName
+		t.icon = spellTexture
+		t.duration = durationVal
+		t.playerCast = playerCast
+		t.stackCount = stackVal
+		t.startTime = getTime
+		t.expirationTime = expTime
+		t.sID = spellID
+		t.caster = srcName
 
 		if isDebuff then
-			guidBuffs[dstGUID][i + 1].isDebuff = true
-			guidBuffs[dstGUID][i + 1].debuffType = debuffType or "none"
+			t.isDebuff = true
+			t.debuffType = debuffType or "none"
 		end
 
+		table_insert(guidBuffs[dstGUID], t)
 		return true
 	else
 		for i = 1, count do
@@ -127,26 +141,27 @@ function core:AddSpellToGUID(dstGUID, spellID, srcName, spellName, spellTexture,
 				guidBuffs[dstGUID][i].sID == spellID and
 					(not guidBuffs[dstGUID][i].caster or guidBuffs[dstGUID][i].caster == srcName)
 			 then
-				guidBuffs[dstGUID][i].expirationTime = expires or 0 - 0.1
+				guidBuffs[dstGUID][i].expirationTime = expTime
 				guidBuffs[dstGUID][i].startTime = getTime
 				return true
 			elseif i == count then
-				table_insert(guidBuffs[dstGUID], i + 1, {
-					name = spellName,
-					icon = spellTexture,
-					duration = (duration or 0),
-					playerCast = srcGUID == playerGUID and 1,
-					stackCount = stackCount or 0,
-					startTime = getTime,
-					expirationTime = expires or 0 - 0.1,
-					sID = spellID,
-					caster = srcName
-				})
+				local t = acquireTable()
+				t.name = spellName
+				t.icon = spellTexture
+				t.duration = durationVal
+				t.playerCast = playerCast
+				t.stackCount = stackVal
+				t.startTime = getTime
+				t.expirationTime = expTime
+				t.sID = spellID
+				t.caster = srcName
 
 				if isDebuff then
-					guidBuffs[dstGUID][i + 1].isDebuff = true
-					guidBuffs[dstGUID][i + 1].debuffType = debuffType or "none"
+					t.isDebuff = true
+					t.debuffType = debuffType or "none"
 				end
+
+				table_insert(guidBuffs[dstGUID], t)
 				return true
 			end
 		end
@@ -173,9 +188,10 @@ do
 		local dstName, dstFlags = LibAI:GetGUIDInfo(dstGUID)
 
 		if found then
-			spellTexture = spellTexture:upper():gsub("INTERFACE\\ICONS\\", "")
+			spellTexture = GetCleanIcon(spellTexture)
 
 			local updateBars = false
+			local srcInfo = LibAI:GetGUIDInfo(srcGUID)
 			local spellOpts = core:HaveSpellOpts(spellName, spellID)
 
 			if spellOpts and spellOpts.show and CheckFilter(auraType, true) then
@@ -185,7 +201,7 @@ do
 					(P.spellOpts[spellName].show == 4 and core:FlagIsFriendly(dstFlags)) or
 					(P.spellOpts[spellName].show == 5 and core:FlagIsHostle(dstFlags))
 				then
-					updateBars = self:AddSpellToGUID(dstGUID, spellID, LibAI:GetGUIDInfo(srcGUID), spellName, spellTexture, duration, srcGUID, isDebuff, debuffType, expires, stackCount)
+					updateBars = self:AddSpellToGUID(dstGUID, spellID, srcInfo, spellName, spellTexture, duration, srcGUID, isDebuff, debuffType, expires, stackCount)
 				end
 			else
 				if
@@ -194,7 +210,7 @@ do
 					(auraType == "DEBUFF" and P.defaultDebuffShow == 1) or
 					((P.defaultDebuffShow == 2 and srcGUID == playerGUID) or (P.defaultDebuffShow == 4 and srcGUID == playerGUID))
 				then
-					updateBars = self:AddSpellToGUID(dstGUID, spellID, LibAI:GetGUIDInfo(srcGUID), spellName, spellTexture, duration, srcGUID, isDebuff, debuffType, expires, stackCount)
+					updateBars = self:AddSpellToGUID(dstGUID, spellID, srcInfo, spellName, spellTexture, duration, srcGUID, isDebuff, debuffType, expires, stackCount)
 				end
 			end
 
@@ -221,12 +237,12 @@ end
 function core:LibAuraInfo_AURA_REFRESH(event, dstGUID, spellID, srcGUID, spellSchool, auraType, expirationTime)
 	if dstGUID == playerGUID then return end
 
-	local spellName = GetSpellInfo(spellID)
 	if guidBuffs[dstGUID] then
 		local srcName = LibAI:GetGUIDInfo(srcGUID)
+		local now = GetTime()
 		for i = #guidBuffs[dstGUID], 1, -1 do
 			if guidBuffs[dstGUID][i].sID == spellID and (not guidBuffs[dstGUID][i].caster or guidBuffs[dstGUID][i].caster == srcName) then
-				guidBuffs[dstGUID][i].startTime = GetTime()
+				guidBuffs[dstGUID][i].startTime = now
 				guidBuffs[dstGUID][i].expirationTime = expirationTime
 				self:ForceNameplateUpdate(dstGUID)
 				return
@@ -234,6 +250,7 @@ function core:LibAuraInfo_AURA_REFRESH(event, dstGUID, spellID, srcGUID, spellSc
 		end
 	end
 
+	local spellName = GetSpellInfo(spellID)
 	local dstName = LibAI:GetGUIDInfo(dstGUID)
 	if not LibAI:GUIDAuraID(dstGUID, spellID) then
 		Debug("SPELL_AURA_REFRESH", LibAI:GUIDAuraID(dstGUID, spellID), dstName, spellName, "passing to SPELL_AURA_APPLIED")
@@ -242,14 +259,13 @@ function core:LibAuraInfo_AURA_REFRESH(event, dstGUID, spellID, srcGUID, spellSc
 end
 
 function core:LibAuraInfo_AURA_APPLIED_DOSE(event, dstGUID, spellID, srcGUID, spellSchool, auraType, stackCount, expirationTime)
-	local spellName = GetSpellInfo(spellID)
-
 	if guidBuffs[dstGUID] then
 		local srcName = LibAI:GetGUIDInfo(srcGUID)
+		local now = GetTime()
 		for i = #guidBuffs[dstGUID], 1, -1 do
 			if guidBuffs[dstGUID][i].sID == spellID and (not guidBuffs[dstGUID][i].caster or guidBuffs[dstGUID][i].caster == srcName) then
 				guidBuffs[dstGUID][i].stackCount = stackCount
-				guidBuffs[dstGUID][i].startTime = GetTime()
+				guidBuffs[dstGUID][i].startTime = now
 				guidBuffs[dstGUID][i].expirationTime = expirationTime
 				self:ForceNameplateUpdate(dstGUID)
 				return
@@ -257,6 +273,7 @@ function core:LibAuraInfo_AURA_APPLIED_DOSE(event, dstGUID, spellID, srcGUID, sp
 		end
 	end
 
+	local spellName = GetSpellInfo(spellID)
 	local dstName = LibAI:GetGUIDInfo(dstGUID)
 	if not LibAI:GUIDAuraID(dstGUID, spellID) then
 		Debug("LAURA_APPLIED_DOSE", dstName, spellName, "passing to SPELL_AURA_APPLIED")
@@ -264,16 +281,11 @@ function core:LibAuraInfo_AURA_APPLIED_DOSE(event, dstGUID, spellID, srcGUID, sp
 	self:LibAuraInfo_AURA_APPLIED(event, dstGUID, spellID, srcGUID, spellSchool, auraType)
 end
 
-do
-	local table_getn = table.getn
-	function core:LibAuraInfo_AURA_CLEAR(event, dstGUID)
-		if guidBuffs[dstGUID] and dstGUID ~= playerGUID then
-			-- Remove all known buffs for that person.
-			-- Maybe we're in a BG and don't need their old buffs on our plates.
-			for i = table_getn(guidBuffs[dstGUID]), 1, -1 do
-				table_remove(guidBuffs[dstGUID], i)
-			end
-			self:ForceNameplateUpdate(dstGUID)
-		end
+function core:LibAuraInfo_AURA_CLEAR(event, dstGUID)
+	if guidBuffs[dstGUID] and dstGUID ~= playerGUID then
+		-- Remove all known buffs for that person.
+		-- Maybe we're in a BG and don't need their old buffs on our plates.
+		wipe(guidBuffs[dstGUID])
+		self:ForceNameplateUpdate(dstGUID)
 	end
 end

@@ -25,6 +25,8 @@ local Debug = core.Debug
 local DebuffTypeColor = DebuffTypeColor
 local select = select
 local string_gsub = string.gsub
+local floor = math.floor
+local max = math.max
 
 local P = {}
 local nametoGUIDs = core.nametoGUIDs
@@ -301,7 +303,8 @@ local function iconOnUpdate(self, elapsed)
 	if self.lastUpdate > 0.1 then --abit fast for cooldown flash.
 		self.lastUpdate = 0
 		if self.expirationTime > 0 then
-			local rawTimeLeft = self.expirationTime - GetTime()
+			local now = GetTime()
+			local rawTimeLeft = self.expirationTime - now
 			local timeLeft
 			if rawTimeLeft < 10 then
 				timeLeft = core:Round(rawTimeLeft, P.digitsnumber)
@@ -325,7 +328,7 @@ local function iconOnUpdate(self, elapsed)
 			end
 
 			if (timeLeft / (self.duration + 0.01)) < P.blinkTimeleft and timeLeft < 60 then --buff only has 20% timeleft and is less then 60 seconds.
-				local f = GetTime() % 1
+				local f = now % 1
 				if f > 0.5 then
 					f = 1 - f
 				end
@@ -333,7 +336,7 @@ local function iconOnUpdate(self, elapsed)
 				self:SetAlpha(f * 3)
 			end
 
-			if GetTime() > self.expirationTime then
+			if now > self.expirationTime then
 				self:Hide()
 
 				local GUID = GetPlateGUID(self.realPlate)
@@ -353,12 +356,13 @@ local function iconOnUpdate(self, elapsed)
 end
 
 function core:RemoveOldSpells(GUID)
+	local now = GetTime()
 	for i = (P.numBars * P.iconsPerBar), 1, -1 do
 		if guidBuffs[GUID] and guidBuffs[GUID][i] then
 			if
 				guidBuffs[GUID][i].expirationTime and
 				guidBuffs[GUID][i].expirationTime > 0 and
-				GetTime() > guidBuffs[GUID][i].expirationTime
+				now > guidBuffs[GUID][i].expirationTime
 			then
 				table_remove(guidBuffs[GUID], i)
 			end
@@ -606,8 +610,7 @@ function core:AddBuffsToPlate(plate, GUID)
 
 					buffFrames[plate][i].texture:SetTexture("Interface\\Icons\\" .. guidBuffs[GUID][i].icon)
 					buffFrames[plate][i]:Show()
-					--make sure OnShow fires.
-					iconOnShow(buffFrames[plate][i])
+					--OnShow fires via frame:SetScript("OnShow", iconOnShow) in CreateBuffFrame
 
 					iconOnUpdate(buffFrames[plate][i], 1)
 				else

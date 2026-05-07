@@ -1023,30 +1023,17 @@ do
 		"Author",
 		"X-Category",
 		"X-License",
-		"X-Email",
-		"Email",
-		"eMail",
 		"X-Website",
 		"X-Credits",
-		"X-Localizations",
-		"X-Discord",
-		"X-Bitcoin"
+		"X-Localizations"
 	}
 	local haseditbox = {
-		["X-Website"] = true,
-		["X-Email"] = true,
-		["X-Discord"] = true,
-		["Email"] = true,
-		["eMail"] = true,
-		["X-Bitcoin"] = true
+		["X-Website"] = true
 	}
 	local fNames = {
 		["Author"] = L.author,
 		["X-License"] = L.license,
-		["X-Website"] = L.website,
-		["X-Discord"] = "Discord",
-		["X-Email"] = L.email,
-		["X-Bitcoin"] = L.bitcoinAddress
+		["X-Website"] = L.website
 	}
 	local yellow = "|cffffd100%s|r"
 
