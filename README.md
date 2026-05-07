@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/WoTLK-3.3.5a-orange?style=flat-square" alt="WoTLK 3.3.5a"/>
-  <img src="https://img.shields.io/badge/Status-Stable-brightgreen?style=flat-square" alt="Status"/>
+  <img src="https://img.shields.io/badge/Status-Beta-yellow?style=flat-square" alt="Status"/>
+  <img src="https://img.shields.io/badge/Testing-Recommended%20on%20alts-blue?style=flat-square" alt="Testing"/>
   <img src="https://img.shields.io/badge/License-Open%20Source-yellow?style=flat-square" alt="License"/>
   <img src="https://img.shields.io/badge/Performance-40%E2%80%9360%25%20less%20CPU-9cf?style=flat-square" alt="Performance"/>
 </p>
@@ -20,6 +21,8 @@
 ## 📖 Introduction
 
 **PlateBuffs** displays active buffs and debuffs directly above nameplates — a critical tool for arena, battlegrounds, and PvE encounters. This fork takes the original WoD backport (1.18.1 (r229) for **World of Warcraft 3.3.5a** and surgically reworks the execution path to eliminate Lua garbage collection spikes, reduce CPU frame time, and ensure smooth performance even during intense 40-player raids.
+
+> 🚧 **Beta Notice** — This is a **deep performance overhaul** with extensive changes to the core engine, rendering pipeline, and memory management. While tested in controlled environments, it has **not yet been battle-hardened across all playstyles and encounters**. It is recommended to test this version on **alt characters** or during **low-stakes content** before using it in rated arenas or progression raids. Please report any issues on the [issue tracker](https://github.com/hypopheria2k/PlateBuffs_WoTLK_3.3.5a/issues).
 
 > ⚠️ This is a **performance-focused maintenance fork**. All original features are preserved and fully functional. No visual changes, no feature bloat — just cleaner, faster code.
 
@@ -96,6 +99,7 @@ This pattern is applied across **all** module files: `core.lua`, `frames.lua`, `
 | `core.lua:175-198` | Added `acquireTable()`, `releaseTable()`, `wipe()` pool | Eliminates GC pressure from table creation |
 | `core.lua:530` | `local now = GetTime()` in `CollectUnitInfo` | Fewer API calls per event |
 | `core.lua:539` | `wipe()` replaces `table_remove` loop | Zero GC allocs on data clear |
+| `core.lua:139,702-718` | `PLAYER_LEAVING_WORLD` handler + full `guidBuffs`/`nametoGUIDs` cleanup | Prevents memory leak over multi-hour sessions |
 | `core.lua:556-584,604-636` | `acquireTable()` replaces table literals | Table recycling across buff/debuff entries |
 | `frames.lua:28-29` | Added `local floor`, `local max` | Direct upvalue access |
 | `frames.lua:299-353` | `iconOnUpdate` `GetTime()` caching | 66% fewer API calls per frame |

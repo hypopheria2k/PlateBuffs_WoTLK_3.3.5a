@@ -135,7 +135,8 @@ local regEvents = {
 	"PLAYER_TARGET_CHANGED",
 	"UPDATE_MOUSEOVER_UNIT",
 	"UNIT_AURA",
-	"UNIT_TARGET"
+	"UNIT_TARGET",
+	"PLAYER_LEAVING_WORLD"
 }
 
 core.db = {}
@@ -700,6 +701,26 @@ function core:UNIT_AURA(event, unitID)
 	if UnitExists(unitID) then
 		self:CollectUnitInfo(unitID)
 	end
+end
+
+function core:PLAYER_LEAVING_WORLD()
+	-- Full cache cleanup to prevent memory leaks over long sessions.
+	-- guidBuffs: release all pooled buff tables, then clear
+	for dstGUID, buffList in pairs(guidBuffs) do
+		if type(buffList) == "table" then
+			for i = 1, #buffList do
+				local t = buffList[i]
+				if t then
+					releaseTable(t)
+				end
+			end
+			wipe(buffList)
+		end
+	end
+	wipe(guidBuffs)
+
+	-- nametoGUIDs: clear cached name → GUID mappings
+	wipe(nametoGUIDs)
 end
 
 function core:AddNewSpell(spellName, spellID)
